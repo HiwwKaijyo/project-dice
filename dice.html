@@ -1,0 +1,1162 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tallystone</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky charcoal header with tabs; dice desk = roller + log column; calculators = cards grid; characters = card grid with modal sheet */
+:root{
+  --bg:#141517; --s1:#1b1c1f; --s2:#222327; --s3:#2b2c31; --line:#313237; --line2:#44464c;
+  --fg:#ecebe7; --muted:#a19e96; --dim:#6f6d68;
+  --accent:#e0b26c; --accent-ink:#1b150b; --accent-soft:rgba(224,178,108,.12);
+  --good:#86c497; --bad:#e3826f; --warn:#d9c36a;
+  --f-display:"Fraunces", Georgia, "Times New Roman", serif;
+  --f-body:"IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", Tahoma, system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r:10px; --r-sm:7px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand b{font-family:var(--f-display);font-weight:600;font-size:22px;letter-spacing:.01em}
+.brand span{color:var(--dim);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.pill{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 10px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--dim)}
+.pill.cloud i{background:var(--good)}
+.tabs{display:flex;gap:4px;background:var(--s1);border:1px solid var(--line);border-radius:var(--r);padding:3px}
+.tab{background:none;border:0;padding:7px 14px;border-radius:var(--r-sm);color:var(--muted);font-weight:500;transition:background .15s,color .15s}
+.tab:hover{color:var(--fg)}
+.tab[aria-selected="true"]{background:var(--s3);color:var(--fg)}
+@media (max-width:620px){.tabs{width:100%}.tab{flex:1;padding:8px 6px}}
+
+main{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 80px}
+.view{display:grid;gap:18px}
+h2{font-family:var(--f-display);font-weight:600;font-size:19px;margin:0;text-wrap:balance}
+h3{font-size:12px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0}
+.panel{background:var(--s1);border:1px solid var(--line);border-radius:14px;padding:18px;min-width:0;display:grid;gap:16px;align-content:start}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.hint{color:var(--dim);font-size:13px}
+
+/* buttons */
+.btn{border:1px solid var(--line2);background:var(--s2);border-radius:var(--r-sm);padding:8px 14px;font-weight:500;transition:transform .08s,background .15s,border-color .15s;display:inline-flex;align-items:center;gap:7px;justify-content:center;white-space:nowrap}
+.btn:hover{background:var(--s3);border-color:#55575e}
+.btn:active,.die:active,.chip button:active,.stat:active,.rowbtn:active{transform:scale(.95)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.primary:hover{background:#ebc183}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--fg);background:var(--s2)}
+.btn.danger{color:var(--bad)}
+.btn.armed{background:var(--bad);border-color:var(--bad);color:#1a0b08}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn.big{padding:13px 22px;font-size:17px;border-radius:var(--r)}
+.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:3px;gap:2px}
+.seg button{border:0;background:none;padding:5px 11px;border-radius:5px;color:var(--muted);font-size:13px;transition:background .15s,color .15s}
+.seg button[aria-pressed="true"]{background:var(--s3);color:var(--fg)}
+.seg button[data-mode="adv"][aria-pressed="true"]{color:var(--good)}
+.seg button[data-mode="dis"][aria-pressed="true"]{color:var(--bad)}
+
+/* fields */
+label.f{display:grid;gap:5px;font-size:13px;color:var(--muted);min-width:0}
+input[type=text],input[type=number],select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px;width:100%;min-width:0;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none}
+input[type=number]{font-family:var(--f-mono)}
+textarea{resize:vertical;min-height:70px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:520px){.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* dice desk */
+.desk{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+@media (max-width:900px){.desk{grid-template-columns:minmax(0,1fr)}}
+.dice-row{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.dice-row{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.die{position:relative;background:var(--s2);border:1px solid var(--line);border-radius:var(--r);padding:12px 4px 9px;display:grid;justify-items:center;gap:4px;transition:transform .08s,border-color .15s,background .15s;color:var(--muted)}
+.die:hover{border-color:var(--line2);color:var(--fg)}
+.die svg{width:30px;height:30px;stroke:currentColor;fill:none;stroke-width:1.4}
+.die span{font-family:var(--f-mono);font-size:13px;font-weight:500}
+.die.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.die .cnt{position:absolute;top:5px;right:6px;font-family:var(--f-mono);font-size:11px;background:var(--accent);color:var(--accent-ink);border-radius:99px;min-width:18px;padding:0 5px;line-height:18px;font-weight:600}
+.die .minus{position:absolute;top:4px;left:4px;width:20px;height:20px;border-radius:50%;border:1px solid var(--line2);background:var(--s1);color:var(--fg);font-size:13px;line-height:17px;padding:0}
+.die.pop{animation:pop .22s ease-out}
+@keyframes pop{40%{transform:scale(1.08)}}
+.custom-die{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.custom-die input{width:84px}
+.stepper{display:inline-flex;align-items:stretch;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;background:var(--bg)}
+.stepper button{background:var(--s2);border:0;width:34px;font-size:17px;color:var(--muted)}
+.stepper button:hover{color:var(--fg);background:var(--s3)}
+.stepper input{width:64px;border:0;border-radius:0;text-align:center;background:var(--bg)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{display:inline-flex;align-items:stretch;border:1px solid var(--line);border-radius:99px;overflow:hidden;background:var(--s2);font-size:13px}
+.chip .lbl{padding:5px 4px 5px 11px;font-family:var(--f-mono);display:flex;gap:6px;align-items:center}
+.chip .lbl em{font-style:normal;color:var(--accent)}
+.chip button{border:0;background:none;color:var(--muted);padding:0 9px;font-size:15px;transition:background .12s,color .12s}
+.chip button:hover{background:var(--s3);color:var(--fg)}
+.chip button.add:hover{color:var(--good)}
+.chip button.sub:hover{color:var(--bad)}
+.tokens{display:flex;flex-wrap:wrap;gap:6px;min-height:30px;align-items:center}
+.token{font-family:var(--f-mono);font-size:13px;border-radius:6px;padding:3px 4px 3px 9px;background:var(--bg);border:1px solid var(--line2);display:inline-flex;gap:6px;align-items:center}
+.token button{border:0;background:none;color:var(--dim);padding:0 4px;font-size:14px}
+.token button:hover{color:var(--bad)}
+.token.neg{border-color:rgba(227,130,111,.4)}
+.preview{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.preview code{font-family:var(--f-mono);font-size:15px;color:var(--fg);word-break:break-all;min-width:0;flex:1}
+.result{display:grid;grid-template-columns:auto minmax(0,1fr);gap:18px;align-items:center;border-top:1px solid var(--line);padding-top:16px}
+.result .total{font-family:var(--f-display);font-size:64px;line-height:1;font-weight:600;min-width:2ch;text-align:center;font-variant-numeric:tabular-nums}
+.result .total.crit{color:var(--good)}
+.result .total.fumble{color:var(--bad)}
+.result .total.spin{opacity:.55}
+.result .meta{min-width:0;display:grid;gap:4px}
+.result .meta b{font-weight:600}
+.detail{font-family:var(--f-mono);font-size:13px;color:var(--muted);word-break:break-word}
+.detail s{color:var(--dim)}
+.detail .hi{color:var(--fg)}
+.tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:4px;padding:1px 6px;vertical-align:2px}
+.tag.crit{background:rgba(134,196,151,.16);color:var(--good)}
+.tag.fumble{background:rgba(227,130,111,.16);color:var(--bad)}
+.tag.adv{color:var(--good);border:1px solid rgba(134,196,151,.35)}
+.tag.dis{color:var(--bad);border:1px solid rgba(227,130,111,.35)}
+.presets{display:flex;gap:7px;flex-wrap:wrap}
+
+/* log */
+.log{position:sticky;top:calc(env(safe-area-inset-top,0px) + 76px)}
+.log-list{display:grid;gap:8px;max-height:min(68vh,640px);overflow:auto;padding-right:2px}
+.entry{border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px;background:var(--s2);display:grid;gap:4px;animation:slide .25s ease-out}
+@keyframes slide{from{transform:translateY(-6px);opacity:.3}}
+.entry .row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.entry .t{font-weight:500;font-size:14px;min-width:0}
+.entry .v{font-family:var(--f-mono);font-size:20px;font-weight:600}
+.entry .when{font-size:11px;color:var(--dim)}
+.entry.crit{border-color:rgba(134,196,151,.4)}
+.entry.fumble{border-color:rgba(227,130,111,.4)}
+.empty{color:var(--dim);font-size:14px;padding:18px;text-align:center;border:1px dashed var(--line);border-radius:var(--r)}
+
+/* calc */
+.calc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:18px;align-items:start}
+.out{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:10px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px}
+.kpi{display:grid;gap:2px}
+.kpi small{font-size:11px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.kpi b{font-family:var(--f-mono);font-size:22px;font-weight:600}
+.kpi b.acc{color:var(--accent)}
+.bar{height:6px;background:var(--s3);border-radius:99px;overflow:hidden;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:99px;transition:width .3s}
+.bar i.crit{background:var(--good)}
+.steps{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);display:grid;gap:2px;max-height:180px;overflow:auto}
+.steps div{display:flex;justify-content:space-between;gap:10px}
+table.ref{width:100%;border-collapse:collapse;font-size:13px}
+table.ref td,table.ref th{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left}
+table.ref th{color:var(--dim);font-weight:500;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+table.ref td{font-family:var(--f-mono)}
+.scroll{overflow-x:auto}
+
+/* characters */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.toolbar .sp{flex:1}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:16px;align-items:start}
+.card{background:var(--s1);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:13px;transition:border-color .2s,transform .2s;min-width:0}
+.card:hover{border-color:var(--line2)}
+.card.active{border-color:var(--accent)}
+.card-head{display:flex;justify-content:space-between;gap:10px;align-items:start}
+.card-head .nm{font-family:var(--f-display);font-size:21px;font-weight:600;line-height:1.2;word-break:break-word}
+.card-head .sub{color:var(--muted);font-size:13px}
+.badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.badge{font-size:11px;border-radius:4px;padding:1px 7px;border:1px solid var(--line2);color:var(--muted);white-space:nowrap}
+.badge.on{border-color:var(--accent);color:var(--accent)}
+.hp{display:grid;gap:7px}
+.hp-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.hp-top b{font-family:var(--f-mono);font-size:20px}
+.hp-top b small{color:var(--dim);font-size:14px}
+.hp-top .tmp{font-family:var(--f-mono);font-size:12px;color:#8fb7d9}
+.hpbar{height:8px;border-radius:99px;background:var(--s3);overflow:hidden;display:flex}
+.hpbar i{display:block;height:100%;transition:width .35s ease}
+.hpbar .cur{background:var(--good)}
+.hpbar .cur.mid{background:var(--warn)}
+.hpbar .cur.low{background:var(--bad)}
+.hpbar .tmp{background:#8fb7d9}
+.hp-ctl{display:flex;gap:6px;align-items:center}
+.hp-ctl input{width:70px;text-align:center}
+.hp-ctl .btn{flex:1}
+.hp-flash{animation:flash .45s}
+@keyframes flash{30%{background:rgba(227,130,111,.18)}}
+.hp-heal{animation:heal .45s}
+@keyframes heal{30%{background:rgba(134,196,151,.18)}}
+.vitals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.vital{background:var(--bg);border:1px solid var(--line);border-radius:var(--r-sm);padding:6px 4px;text-align:center}
+.vital small{display:block;font-size:10px;color:var(--dim);letter-spacing:.08em}
+.vital b{font-family:var(--f-mono);font-size:16px}
+button.vital{transition:border-color .15s,transform .08s}
+button.vital:hover{border-color:var(--accent)}
+button.vital:active{transform:scale(.95)}
+.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+@media (max-width:380px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.stat{background:var(--s2);border:1px solid var(--line);border-radius:var(--r-sm);padding:7px 2px 6px;display:grid;justify-items:center;gap:0;transition:border-color .15s,background .15s,transform .08s}
+.stat:hover{border-color:var(--accent);background:var(--accent-soft)}
+.stat small{font-size:10px;letter-spacing:.08em;color:var(--muted)}
+.stat b{font-family:var(--f-mono);font-size:17px;font-weight:600}
+.stat span{font-family:var(--f-mono);font-size:11px;color:var(--dim)}
+.card-actions{display:flex;gap:6px;flex-wrap:wrap}
+.card-actions .btn{flex:1 1 auto}
+
+/* modal */
+.overlay{position:fixed;inset:0;z-index:50;background:rgba(8,8,9,.66);display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));animation:fade .15s}
+@keyframes fade{from{opacity:0}}
+.modal{background:var(--s1);border:1px solid var(--line2);border-radius:16px;width:min(760px,100%);max-height:100%;overflow:auto;display:grid;gap:16px;padding:20px;animation:rise .2s ease-out}
+@keyframes rise{from{transform:translateY(10px);opacity:.4}}
+.modal-head{display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap}
+.modal-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:14px}
+.statedit{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+@media (max-width:560px){.statedit{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.statedit label{display:grid;gap:4px;text-align:center;font-size:11px;color:var(--muted);letter-spacing:.06em}
+.statedit input{text-align:center;font-size:18px;padding:8px 4px}
+.statedit em{font-style:normal;font-family:var(--f-mono);color:var(--accent);font-size:13px}
+.checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 10px}
+.check{display:flex;gap:8px;align-items:center;font-size:13px;padding:4px 0;cursor:pointer}
+.check input{accent-color:var(--accent);width:16px;height:16px}
+.check small{color:var(--dim);font-family:var(--f-mono)}
+.atk-row{display:grid;grid-template-columns:minmax(0,1.4fr) 82px minmax(0,1fr) 64px auto auto;gap:6px;align-items:center}
+@media (max-width:620px){.atk-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);background:var(--bg);border:1px solid var(--line);padding:8px;border-radius:var(--r-sm)}}
+.sheet-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@media (max-width:640px){.sheet-cols{grid-template-columns:minmax(0,1fr)}}
+.rows{display:grid;gap:3px}
+.rowbtn{display:flex;align-items:center;gap:9px;width:100%;background:none;border:1px solid transparent;border-radius:var(--r-sm);padding:6px 8px;text-align:left;transition:background .12s,border-color .12s,transform .08s}
+.rowbtn:hover{background:var(--s2);border-color:var(--line)}
+.rowbtn .dot{width:8px;height:8px;border-radius:50%;border:1px solid var(--line2);flex:none}
+.rowbtn .dot.on{background:var(--accent);border-color:var(--accent)}
+.rowbtn .nm{flex:1;min-width:0;font-size:14px}
+.rowbtn .nm small{color:var(--dim);font-size:11px;margin-left:4px}
+.rowbtn b{font-family:var(--f-mono);font-weight:600;min-width:3ch;text-align:right}
+.atk-card{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;display:grid;gap:8px;background:var(--s2)}
+.atk-card .atk-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.atk-card .atk-top span{font-family:var(--f-mono);color:var(--muted);font-size:13px}
+.codebox{font-family:var(--f-mono);font-size:12px;word-break:break-all;min-height:110px}
+
+/* toast */
+.toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:60;display:grid;gap:8px;width:min(420px,calc(100% - 32px));pointer-events:none}
+.toast{background:var(--s3);border:1px solid var(--line2);border-radius:var(--r);padding:10px 14px;box-shadow:0 8px 30px rgba(0,0,0,.4);display:flex;justify-content:space-between;align-items:center;gap:12px;animation:rise .2s ease-out;font-size:14px}
+.toast b{font-family:var(--f-mono);font-size:22px}
+.toast.crit{border-color:var(--good)}.toast.crit b{color:var(--good)}
+.toast.fumble{border-color:var(--bad)}.toast.fumble b{color:var(--bad)}
+.toast.out{opacity:0;transform:translateY(6px);transition:all .25s}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><b>Tallystone</b><span>D&amp;D dice &amp; sheets</span></div>
+    <span class="pill" id="storePill"><i></i><span>เก็บในเบราว์เซอร์นี้</span></span>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="dice" aria-selected="true">ทอยลูกเต๋า</button>
+      <button class="tab" role="tab" data-tab="calc" aria-selected="false">คำนวณ</button>
+      <button class="tab" role="tab" data-tab="chars" aria-selected="false">ตัวละคร</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- DICE -->
+  <section class="view" id="view-dice">
+    <div class="desk">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>โต๊ะทอยลูกเต๋า</h2>
+          <div class="seg" role="group" aria-label="ความได้เปรียบ" data-modeseg>
+            <button data-mode="dis" aria-pressed="false">เสียเปรียบ</button>
+            <button data-mode="normal" aria-pressed="true">ปกติ</button>
+            <button data-mode="adv" aria-pressed="false">ได้เปรียบ</button>
+          </div>
+        </div>
+
+        <div style="display:grid;gap:10px">
+          <h3>เลือกลูกเต๋า · กดเพื่อเพิ่ม</h3>
+          <div class="dice-row" id="diceRow"></div>
+          <div class="custom-die">
+            <span class="hint">ลูกเต๋ากำหนดเอง d</span>
+            <input type="number" id="customSides" min="2" max="1000" value="3" aria-label="จำนวนหน้า">
+            <button class="btn sm" id="addCustom">+ เพิ่ม</button>
+            <span class="hint" style="margin-left:auto">ค่าคงที่</span>
+            <div class="stepper">
+              <button data-step="-1" aria-label="ลด">−</button>
+              <input type="number" id="flatMod" value="0" aria-label="ค่าคงที่">
+              <button data-step="1" aria-label="เพิ่ม">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;gap:10px">
+          <div class="panel-head">
+            <h3>บวก/ลบจาก stats</h3>
+            <select id="rollChar" style="width:auto;max-width:220px" aria-label="ตัวละครที่ใช้"></select>
+          </div>
+          <div class="chips" id="statChips"></div>
+        </div>
+
+        <label class="f">หรือพิมพ์สูตรเอง (เช่น 2d6+1d4+3, 4d6kh3, 2d20kl1)
+          <input type="text" id="exprInput" placeholder="ว่างไว้ได้" autocomplete="off" spellcheck="false">
+        </label>
+
+        <div class="tokens" id="tokens"></div>
+
+        <div class="preview">
+          <code id="exprPreview">—</code>
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost" id="clearTray">ล้าง</button>
+            <button class="btn primary big" id="rollBtn">ทอย</button>
+          </div>
+        </div>
+
+        <div class="presets">
+          <button class="btn sm" data-preset="1d20">d20</button>
+          <button class="btn sm" data-preset="2d20kh1">2d20 เอาสูง</button>
+          <button class="btn sm" data-preset="4d6kh3">4d6 ทิ้งต่ำสุด</button>
+          <button class="btn sm" data-preset="stats">สุ่ม stats ×6</button>
+          <button class="btn sm" data-preset="1d100">d100 (%)</button>
+          <button class="btn sm" data-preset="death">Death save</button>
+        </div>
+
+        <div class="result" aria-live="polite">
+          <div class="total" id="bigTotal">—</div>
+          <div class="meta"><b id="bigTitle">ยังไม่ได้ทอย</b><div class="detail" id="bigDetail">เลือกลูกเต๋าแล้วกด “ทอย”</div></div>
+        </div>
+      </div>
+
+      <aside class="panel log">
+        <div class="panel-head"><h2>ประวัติการทอย</h2><button class="btn sm ghost" id="clearLog">ล้าง</button></div>
+        <div class="log-list" id="logList"></div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- CALC -->
+  <section class="view" id="view-calc" hidden>
+    <div class="calc-grid">
+      <div class="panel">
+        <div class="panel-head"><h2>คำนวณ HP</h2><span class="hint">Hit Die × เลเวล + CON</span></div>
+        <div class="grid2">
+          <label class="f">คลาส
+            <select id="hpClass"></select>
+          </label>
+          <label class="f">Hit Die
+            <select id="hpHD"><option value="6">d6</option><option value="8">d8</option><option value="10">d10</option><option value="12">d12</option></select>
+          </label>
+          <label class="f">เลเวล<input type="number" id="hpLevel" min="1" max="20" value="5"></label>
+          <label class="f">ค่า CON<input type="number" id="hpCon" min="1" max="30" value="14"></label>
+          <label class="f">วิธีคิด
+            <select id="hpMethod"><option value="avg">ค่าเฉลี่ย (ตามกฎ)</option><option value="roll">ทอยจริงทุกเลเวล</option><option value="max">เต็มทุกเลเวล</option></select>
+          </label>
+          <label class="f">HP เพิ่มต่อเลเวล
+            <select id="hpExtra"><option value="0">ไม่มี</option><option value="1">+1 (Hill Dwarf / Draconic)</option><option value="2">+2 (Tough feat)</option><option value="3">+3 (ทั้งสองอย่าง)</option></select>
+          </label>
+        </div>
+        <div class="out">
+          <div class="kpis">
+            <div class="kpi"><small>Max HP</small><b class="acc" id="hpTotal">0</b></div>
+            <div class="kpi"><small>CON mod</small><b id="hpConMod">+0</b></div>
+            <div class="kpi"><small>Hit Dice</small><b id="hpDice">5d10</b></div>
+          </div>
+          <div class="steps" id="hpSteps"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" id="hpReroll">ทอย HP ใหม่</button>
+          <button class="btn" id="hpFromChar">ดึงจากตัวละคร</button>
+          <button class="btn primary" id="hpApply">ใส่ให้ตัวละคร</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>คำนวณการโจมตี</h2><span class="hint">โอกาสโดน · ดาเมจเฉลี่ย</span></div>
+        <div class="grid3">
+          <label class="f">Ability mod<input type="number" id="atAbil" value="3"></label>
+          <label class="f">Proficiency<input type="number" id="atProf" value="3"></label>
+          <label class="f">โบนัสอื่น<input type="number" id="atMagic" value="0"></label>
+          <label class="f">AC เป้าหมาย<input type="number" id="atAC" value="15"></label>
+          <label class="f">ติดคริตที่
+            <select id="atCrit"><option value="20">20</option><option value="19">19–20</option><option value="18">18–20</option></select>
+          </label>
+          <label class="f">จำนวนครั้ง/เทิร์น<input type="number" id="atCount" min="1" max="10" value="2"></label>
+          <label class="f">ลูกเต๋าดาเมจ<input type="text" id="atDice" value="1d8" spellcheck="false"></label>
+          <label class="f">ดาเมจ +<input type="number" id="atDmgMod" value="3"></label>
+          <label class="f">เป้าหมายต้านทาน
+            <select id="atRes"><option value="1">ปกติ</option><option value="0.5">Resistant (½)</option><option value="2">Vulnerable (×2)</option><option value="0">Immune</option></select>
+          </label>
+        </div>
+        <div class="seg" role="group" aria-label="ความได้เปรียบ" id="atMode">
+          <button data-amode="dis" aria-pressed="false">เสียเปรียบ</button>
+          <button data-amode="normal" aria-pressed="true">ปกติ</button>
+          <button data-amode="adv" aria-pressed="false">ได้เปรียบ</button>
+        </div>
+        <div class="out">
+          <div class="kpis">
+            <div class="kpi"><small>To-hit</small><b class="acc" id="atBonus">+6</b></div>
+            <div class="kpi"><small>โอกาสโดน</small><b id="atHit">60%</b></div>
+            <div class="kpi"><small>โอกาสคริต</small><b id="atCritP">5%</b></div>
+          </div>
+          <div class="bar" title="โอกาสโดน"><i id="atHitBar"></i><i class="crit" id="atCritBar"></i></div>
+          <div class="kpis">
+            <div class="kpi"><small>ดาเมจเมื่อโดน</small><b id="atAvg">7.5</b></div>
+            <div class="kpi"><small>ดาเมจคริต</small><b id="atAvgCrit">12</b></div>
+            <div class="kpi"><small>คาดหวัง/เทิร์น</small><b class="acc" id="atDPR">0</b></div>
+          </div>
+          <div class="hint" id="atNote"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" id="atFromChar">ดึงจากตัวละคร</button>
+          <button class="btn primary" id="atRoll">ทอยการโจมตีนี้</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head"><h2>ค่าอ้างอิงเร็ว</h2></div>
+        <div class="grid2">
+          <label class="f">ค่า Ability<input type="number" id="qScore" min="1" max="30" value="16"></label>
+          <label class="f">เลเวล<input type="number" id="qLevel" min="1" max="20" value="5"></label>
+        </div>
+        <div class="out">
+          <div class="kpis">
+            <div class="kpi"><small>Modifier</small><b class="acc" id="qMod">+3</b></div>
+            <div class="kpi"><small>Proficiency</small><b id="qProf">+3</b></div>
+            <div class="kpi"><small>Spell DC</small><b id="qDC">14</b></div>
+            <div class="kpi"><small>Spell atk</small><b id="qSA">+6</b></div>
+          </div>
+          <div class="hint">Spell DC = 8 + Proficiency + mod · Spell attack = Proficiency + mod</div>
+        </div>
+        <div class="scroll">
+          <table class="ref">
+            <thead><tr><th>คะแนน</th><th>Mod</th><th>เลเวล</th><th>Prof</th></tr></thead>
+            <tbody id="refTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHARS -->
+  <section class="view" id="view-chars" hidden>
+    <div class="toolbar">
+      <h2>การ์ดตัวละคร</h2>
+      <span class="sp"></span>
+      <button class="btn" id="importBtn">นำเข้าด้วย ID</button>
+      <button class="btn primary" id="newChar">+ สร้างตัวละคร</button>
+    </div>
+    <p class="hint" style="margin:0" id="storeHint"></p>
+    <div class="cards" id="cards"></div>
+  </section>
+</main>
+
+<div id="modalRoot"></div>
+<div class="toasts" id="toasts"></div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- data ---------- */
+const AB=['str','dex','con','int','wis','cha'];
+const ABN={str:'STR',dex:'DEX',con:'CON',int:'INT',wis:'WIS',cha:'CHA'};
+const ABTH={str:'พลัง',dex:'ว่องไว',con:'อดทน',int:'ปัญญา',wis:'ญาณ',cha:'เสน่ห์'};
+const SKILLS=[
+ ['acrobatics','Acrobatics','กายกรรม','dex'],['animal','Animal Handling','ดูแลสัตว์','wis'],['arcana','Arcana','เวทศาสตร์','int'],
+ ['athletics','Athletics','กรีฑา','str'],['deception','Deception','หลอกลวง','cha'],['history','History','ประวัติศาสตร์','int'],
+ ['insight','Insight','หยั่งรู้','wis'],['intimidation','Intimidation','ข่มขู่','cha'],['investigation','Investigation','สืบสวน','int'],
+ ['medicine','Medicine','การแพทย์','wis'],['nature','Nature','ธรรมชาติ','int'],['perception','Perception','การรับรู้','wis'],
+ ['performance','Performance','การแสดง','cha'],['persuasion','Persuasion','โน้มน้าว','cha'],['religion','Religion','ศาสนา','int'],
+ ['sleight','Sleight of Hand','มือไว','dex'],['stealth','Stealth','ลอบเร้น','dex'],['survival','Survival','เอาตัวรอด','wis']];
+const CLASSES={Barbarian:[12,null],Bard:[8,'cha'],Cleric:[8,'wis'],Druid:[8,'wis'],Fighter:[10,null],Monk:[8,null],Paladin:[10,'cha'],Ranger:[10,'wis'],Rogue:[8,null],Sorcerer:[6,'cha'],Warlock:[8,'cha'],Wizard:[6,'int'],Artificer:[8,'int'],'อื่นๆ':[8,null]};
+const DICE=[4,6,8,10,12,20,100];
+const SHAPES={
+ 4:'<polygon points="15,3 28,26 2,26"/><line x1="15" y1="3" x2="15" y2="26"/>',
+ 6:'<rect x="4" y="4" width="22" height="22" rx="3"/>',
+ 8:'<polygon points="15,2 28,15 15,28 2,15"/><line x1="2" y1="15" x2="28" y2="15"/>',
+ 10:'<polygon points="15,2 27,12 15,28 3,12"/><polyline points="3,12 15,17 27,12"/><line x1="15" y1="17" x2="15" y2="28"/>',
+ 12:'<polygon points="15,2 27,10 23,26 7,26 3,10"/><polygon points="15,8 21,12 19,19 11,19 9,12"/>',
+ 20:'<polygon points="15,2 27,8 27,22 15,28 3,22 3,8"/><polygon points="15,8 22,20 8,20"/>',
+ 100:'<circle cx="10" cy="15" r="7"/><circle cx="20" cy="15" r="7"/>'};
+
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mod=s=>Math.floor((s-10)/2);
+const profB=l=>2+Math.floor((Math.max(1,Math.min(20,l))-1)/4);
+const fmt=n=>(n>=0?'+':'−')+Math.abs(n);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const int=(v,d=0)=>{const n=parseInt(v,10);return Number.isFinite(n)?n:d};
+const newId=()=>{const a=new Uint32Array(2);crypto.getRandomValues(a);return 'c'+a[0].toString(36)+a[1].toString(36).slice(0,4)};
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+
+/* ---------- dice engine ---------- */
+function rnd(s){const a=new Uint32Array(1);const lim=Math.floor(4294967296/s)*s;let x;do{crypto.getRandomValues(a);x=a[0]}while(x>=lim);return x%s+1}
+function parse(expr){
+  const s=String(expr||'').toLowerCase().replace(/\s+/g,'').replace(/[−–]/g,'-');
+  if(!s) return [];
+  const re=/([+-]?)(?:(\d*)d(\d+|%)(?:(kh|kl)(\d+))?|(\d+))/y;
+  const terms=[];let i=0;
+  while(i<s.length){
+    re.lastIndex=i;const m=re.exec(s);
+    if(!m||(terms.length&&!m[1])) throw new Error('อ่านสูตรไม่ออกตรง “'+s.slice(i)+'” ลองเขียนแบบ 2d6+3');
+    const sign=m[1]==='-'?-1:1;
+    if(m[6]!==undefined) terms.push({t:'n',sign,v:+m[6]});
+    else{
+      const n=m[2]===''?1:+m[2];const sides=m[3]==='%'?100:+m[3];
+      if(n<1||n>200) throw new Error('จำนวนลูกเต๋าต้องอยู่ระหว่าง 1–200');
+      if(sides<2||sides>1000) throw new Error('จำนวนหน้าต้องอยู่ระหว่าง 2–1000');
+      const keep=m[4]?{type:m[4],k:clamp(+m[5],1,n)}:null;
+      terms.push({t:'d',sign,n,sides,keep});
+    }
+    i=re.lastIndex;
+  }
+  return terms;
+}
+function evaluate(terms,{mode='normal',crit=false}={}){
+  let total=0,nat=null,advUsed=false;const parts=[];
+  for(const t of terms){
+    if(t.t==='n'){total+=t.sign*t.v;parts.push({k:'n',sign:t.sign,v:t.v});continue}
+    let n=crit?t.n*2:t.n;let keep=t.keep?{type:t.keep.type,k:crit?t.keep.k*2:t.keep.k}:null;
+    const isD20=t.sides===20&&t.n===1&&!t.keep&&!crit;
+    let adv=null;
+    if(isD20&&!advUsed&&mode!=='normal'){n=2;keep={type:mode==='adv'?'kh':'kl',k:1};advUsed=true;adv=mode}
+    const rolls=Array.from({length:n},()=>rnd(t.sides));
+    let keptIdx=rolls.map((_,i)=>i);
+    if(keep){keptIdx=rolls.map((v,i)=>[v,i]).sort((a,b)=>keep.type==='kh'?b[0]-a[0]:a[0]-b[0]).slice(0,keep.k).map(x=>x[1])}
+    const kept=new Set(keptIdx);
+    const sum=rolls.reduce((a,v,i)=>a+(kept.has(i)?v:0),0);
+    if(isD20&&nat===null&&t.sign>0) nat=rolls[keptIdx[0]];
+    total+=t.sign*sum;
+    parts.push({k:'d',sign:t.sign,label:n+'d'+t.sides+(t.keep?t.keep.type+keep.k:''),rolls,kept,sides:t.sides,adv});
+  }
+  return {total,parts,nat};
+}
+function detailHTML(res,mods){
+  const out=[];
+  res.parts.forEach((p,i)=>{
+    const sg=i===0&&p.sign>0?'':(p.sign>0?' + ':' − ');
+    if(p.k==='n'){out.push(sg+p.v);return}
+    const rs=p.rolls.map((v,j)=>{const cls=p.kept.has(j)?((v===p.sides||v===1)&&p.sides===20?'hi':''):'';return p.kept.has(j)?`<span class="${cls}">${v}</span>`:`<s>${v}</s>`}).join(', ');
+    out.push(`${sg}${p.label} [${rs}]`+(p.adv?` <span class="tag ${p.adv}">${p.adv==='adv'?'ADV':'DIS'}</span>`:''));
+  });
+  (mods||[]).forEach((m,i)=>{out.push((out.length?(m.v>=0?' + ':' − '):(m.v<0?'−':''))+esc(m.label)+' '+Math.abs(m.v))});
+  return out.join('')||'0';
+}
+function avgOf(terms){let dice=0,flat=0;for(const t of terms){if(t.t==='n')flat+=t.sign*t.v;else{const k=t.keep?t.keep.k:t.n;dice+=t.sign*k*(t.sides+1)/2}}return{dice,flat}}
+
+/* ---------- state ---------- */
+const state={
+  chars:[],activeId:ls.get('ts.active',null),mode:'normal',
+  tray:{},flat:0,mods:[],log:ls.get('ts.log',[]),tab:'dice',atMode:'normal',hpRolls:null
+};
+
+function normChar(c){
+  c=c&&typeof c==='object'?c:{};
+  const stats={};AB.forEach(a=>stats[a]=clamp(int(c.stats?.[a],10),1,30));
+  const level=clamp(int(c.level,1),1,20);
+  const hd=[6,8,10,12].includes(int(c.hitDie))?int(c.hitDie):8;
+  const hpMax=clamp(int(c.hp?.max,10),1,999);
+  return {
+    id:/^[a-z0-9]{4,24}$/i.test(c.id||'')?c.id:newId(),
+    name:String(c.name||'ไม่มีชื่อ').slice(0,60),cls:String(c.cls||'Fighter').slice(0,30),race:String(c.race||'').slice(0,30),
+    level,hitDie:hd,stats,ac:clamp(int(c.ac,10),0,40),speed:clamp(int(c.speed,30),0,200),initBonus:clamp(int(c.initBonus,0),-10,20),
+    hp:{max:hpMax,cur:clamp(int(c.hp?.cur,hpMax),-999,hpMax),temp:clamp(int(c.hp?.temp,0),0,999)},
+    saves:(Array.isArray(c.saves)?c.saves:[]).filter(a=>AB.includes(a)),
+    skills:(Array.isArray(c.skills)?c.skills:[]).filter(k=>SKILLS.some(s=>s[0]===k)),
+    expert:(Array.isArray(c.expert)?c.expert:[]).filter(k=>SKILLS.some(s=>s[0]===k)),
+    attacks:(Array.isArray(c.attacks)?c.attacks:[]).slice(0,12).map(a=>({name:String(a?.name||'อาวุธ').slice(0,40),ability:AB.includes(a?.ability)?a.ability:'str',dice:String(a?.dice||'1d6').slice(0,30),bonus:clamp(int(a?.bonus,0),-20,20),prof:a?.prof!==false,type:String(a?.type||'').slice(0,20)})),
+    notes:String(c.notes||'').slice(0,2000),updated:int(c.updated,Date.now())
+  };
+}
+const EXAMPLE=normChar({id:'example0',name:'Kaelen Ashvale',cls:'Ranger',race:'Wood Elf',level:5,hitDie:10,
+  stats:{str:12,dex:17,con:14,int:10,wis:15,cha:8},ac:15,speed:35,hp:{max:44,cur:44,temp:0},saves:['str','dex'],
+  skills:['perception','stealth','survival','nature'],attacks:[{name:'Longbow',ability:'dex',dice:'1d8',bonus:0,prof:true,type:'piercing'},{name:'Shortsword',ability:'dex',dice:'1d6',bonus:0,prof:true,type:'piercing'}],notes:'ตัวละครตัวอย่าง แก้ไขแล้วกดบันทึกเพื่อเก็บเป็นของคุณ'});
+EXAMPLE.example=true;
+
+const allChars=()=>state.chars.length?state.chars:[EXAMPLE];
+const getChar=id=>allChars().find(c=>c.id===id)||null;
+const activeChar=()=>getChar(state.activeId)||allChars()[0];
+const cProf=c=>profB(c.level);
+const cMod=(c,a)=>mod(c.stats[a]);
+const saveBonus=(c,a)=>cMod(c,a)+(c.saves.includes(a)?cProf(c):0);
+const skillBonus=(c,k)=>{const s=SKILLS.find(x=>x[0]===k);return cMod(c,s[3])+(c.expert.includes(k)?cProf(c)*2:c.skills.includes(k)?cProf(c):0)};
+const initB=c=>cMod(c,'dex')+c.initBonus;
+const atkBonus=(c,a)=>cMod(c,a.ability)+(a.prof?cProf(c):0)+a.bonus;
+const castAb=c=>CLASSES[c.cls]?.[1]||null;
+
+/* ---------- storage ---------- */
+const LSK='ts.chars.v1';
+const Store={
+  mode:'local',col:null,unsub:null,pending:new Set(),timers:{},
+  init(){
+    state.chars=(ls.get(LSK,[])||[]).map(normChar);
+    setPill();
+    const C=window.claude;
+    if(!C||typeof C.use!=='function') return;
+    Promise.all([C.use('db'),C.use('user')]).then(async([db,user])=>{
+      if(!db||!user) return;
+      let id=null;try{id=await user.id()}catch(e){}
+      if(!id) return;
+      this.col=db.collection('data/users/'+id);
+      let first=true;
+      this.unsub=this.col.onSnapshot(snap=>{
+        const remote=snap.docs.filter(d=>d.exists).map(d=>normChar(d.data()));
+        const rids=new Set(remote.map(c=>c.id));
+        if(first){
+          first=false;this.mode='cloud';setPill();
+          const toPush=state.chars.filter(c=>!rids.has(c.id));
+          toPush.forEach(c=>{this.pending.add(c.id);this.write(c)});
+        }
+        const keep=state.chars.filter(c=>this.pending.has(c.id)&&!rids.has(c.id));
+        state.chars=remote.map(r=>this.pending.has(r.id)?(state.chars.find(c=>c.id===r.id)||r):r).concat(keep);
+        state.chars.sort((a,b)=>a.name.localeCompare(b.name));
+        ls.set(LSK,state.chars);renderChars();renderRollChar();
+      },e=>this.fail(e));
+    }).catch(()=>{});
+  },
+  write(c){
+    clearTimeout(this.timers[c.id]);
+    this.timers[c.id]=setTimeout(async()=>{
+      try{await this.col.doc(c.id).set(JSON.parse(JSON.stringify(c)))}catch(e){this.fail(e)}
+      finally{this.pending.delete(c.id)}
+    },450);
+  },
+  save(c){
+    c.updated=Date.now();delete c.example;
+    const i=state.chars.findIndex(x=>x.id===c.id);
+    if(i>=0) state.chars[i]=c; else state.chars.push(c);
+    ls.set(LSK,state.chars);
+    if(this.mode==='cloud'){this.pending.add(c.id);this.write(c)}
+  },
+  remove(id){
+    state.chars=state.chars.filter(c=>c.id!==id);ls.set(LSK,state.chars);
+    if(this.mode==='cloud') this.col.doc(id).delete().catch(e=>this.fail(e));
+  },
+  fail(e){
+    const code=e&&e.code;
+    if(code==='quota_exceeded'){toast('พื้นที่เก็บเต็ม ลองลบตัวละครที่ไม่ใช้');return}
+    if(code==='unavailable'||code==='resource_exhausted'){toast('ระบบบันทึกช้าชั่วคราว จะลองใหม่ตอนแก้ไขครั้งถัดไป');return}
+    if(this.mode==='cloud'){
+      this.mode='local';try{this.unsub&&this.unsub()}catch(x){}
+      setPill();toast('บันทึกลงบัญชีไม่ได้ ตอนนี้เก็บไว้ในเบราว์เซอร์นี้แทน');
+    }
+  }
+};
+function setPill(){
+  const p=$('#storePill');const cloud=Store.mode==='cloud';
+  p.classList.toggle('cloud',cloud);
+  p.querySelector('span').textContent=cloud?'บันทึกในบัญชีของคุณ':'เก็บในเบราว์เซอร์นี้';
+  const h=$('#storeHint');
+  if(h) h.textContent=cloud?'ตัวละครถูกเก็บในบัญชีของคุณแบบส่วนตัว เปิดจากเครื่องไหนก็เจอ · กด “คัดลอก ID” เพื่อเก็บรหัสสำรองหรือส่งให้เพื่อน'
+    :'ตัวละครถูกเก็บในเบราว์เซอร์นี้ · กด “คัดลอก ID” เก็บรหัสไว้ แล้วนำกลับมาใส่ได้ทุกเมื่อ ตัวละครจะกลับมาพร้อม stats ล่าสุด';
+}
+
+/* ---------- ID code ---------- */
+function encodeChar(c){
+  const o=JSON.parse(JSON.stringify(c));delete o.example;
+  const bytes=new TextEncoder().encode(JSON.stringify(o));
+  let bin='';bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return 'TS1.'+btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function decodeChar(code){
+  const s=String(code||'').replace(/\s+/g,'');
+  if(!s.startsWith('TS1.')) throw new Error('ID ต้องขึ้นต้นด้วย TS1.');
+  let b=s.slice(4).replace(/-/g,'+').replace(/_/g,'/');while(b.length%4)b+='=';
+  let bin;try{bin=atob(b)}catch(e){throw new Error('ID ไม่ครบหรือมีตัวอักษรผิด')}
+  const bytes=Uint8Array.from(bin,ch=>ch.charCodeAt(0));
+  let obj;try{obj=JSON.parse(new TextDecoder().decode(bytes))}catch(e){throw new Error('ID ไม่ครบหรือมีตัวอักษรผิด')}
+  return normChar(obj);
+}
+
+/* ---------- rolling ---------- */
+function pushLog(entry){
+  state.log.unshift(entry);state.log=state.log.slice(0,60);ls.set('ts.log',state.log);
+  renderLog(true);showBig(entry);
+  const l=entry.lines[0];
+  toast(`<span>${esc(entry.title)}</span><b>${entry.lines.map(x=>x.total).join(' / ')}</b>`,entry.tag,true);
+}
+function rollLine(label,expr,mods,opt){
+  const terms=parse(expr);
+  if(!terms.length&&!(mods&&mods.length)) throw new Error('ยังไม่ได้เลือกลูกเต๋า');
+  const res=evaluate(terms,opt||{});
+  const total=res.total+(mods||[]).reduce((a,m)=>a+m.v,0);
+  let tag=null;
+  if(res.nat!=null){if(res.nat>=(opt?.critMin||20))tag='crit';else if(res.nat===1)tag='fumble'}
+  return {label,total,detail:detailHTML(res,mods),tag,nat:res.nat};
+}
+function doRoll(title,expr,mods,opt){
+  try{
+    const ln=rollLine(title,expr,mods,{mode:state.mode,...opt});
+    pushLog({title,lines:[ln],tag:ln.tag,mode:opt?.mode??state.mode,t:Date.now()});
+    return ln;
+  }catch(e){toast(esc(e.message),'fumble');return null}
+}
+function rollAttack(c,a,ac){
+  const mods=[{label:ABN[a.ability],v:cMod(c,a.ability)}];
+  if(a.prof) mods.push({label:'PROF',v:cProf(c)});
+  if(a.bonus) mods.push({label:'โบนัส',v:a.bonus});
+  try{
+    const hit=rollLine('To-hit','1d20',mods,{mode:state.mode});
+    const isCrit=hit.tag==='crit';
+    const dmods=[{label:ABN[a.ability],v:cMod(c,a.ability)}];if(a.bonus)dmods.push({label:'โบนัส',v:a.bonus});
+    const dmg=rollLine(isCrit?'ดาเมจ (คริต ×2 ลูกเต๋า)':'ดาเมจ',a.dice,dmods,{crit:isCrit});
+    dmg.total=Math.max(0,dmg.total);
+    if(hit.tag==='fumble'){dmg.label='ดาเมจ (พลาด)'}
+    if(ac!=null){hit.label+=` vs AC ${ac}: `+(hit.tag==='fumble'?'พลาด':(isCrit||hit.total>=ac)?'โดน':'พลาด')}
+    pushLog({title:`${c.name} · ${a.name}`,lines:[hit,dmg],tag:hit.tag,mode:state.mode,t:Date.now()});
+  }catch(e){toast(esc(e.message),'fumble')}
+}
+
+/* ---------- toasts ---------- */
+function toast(html,tag,isHtml){
+  const t=document.createElement('div');t.className='toast'+(tag?' '+tag:'');
+  t.innerHTML=isHtml?html:`<span>${html}</span>`;
+  const box=$('#toasts');box.appendChild(t);
+  while(box.children.length>3) box.firstChild.remove();
+  setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),260)},2600);
+}
+
+/* ---------- dice view ---------- */
+function renderDice(){
+  $('#diceRow').innerHTML=DICE.map(s=>{
+    const n=state.tray[s]||0;
+    return `<button class="die${n?' on':''}" data-die="${s}" aria-label="เพิ่ม d${s}"><svg viewBox="0 0 30 30">${SHAPES[s]}</svg><span>d${s}</span>${n?`<span class="cnt">${n}</span>`:''}</button>`;
+  }).join('');
+  // minus buttons as separate overlay to keep valid markup
+  $$('#diceRow .die').forEach(b=>{const s=+b.dataset.die;if(state.tray[s]){const m=document.createElement('span');m.className='minus';m.textContent='−';m.setAttribute('role','button');m.setAttribute('aria-label','ลด d'+s);m.dataset.minus=s;b.appendChild(m)}});
+  renderPreview();
+}
+function trayExpr(){
+  const parts=[];
+  Object.keys(state.tray).map(Number).sort((a,b)=>b===100?-1:a===100?1:a-b).forEach(s=>{if(state.tray[s]>0)parts.push(state.tray[s]+'d'+s)});
+  const custom=$('#exprInput').value.trim();
+  if(custom) parts.push(custom.replace(/^\+/,''));
+  let e=parts.join('+');
+  if(state.flat) e+=(state.flat>0?(e?'+':''):'-')+Math.abs(state.flat);
+  return e;
+}
+function renderPreview(){
+  const e=trayExpr();
+  const mods=state.mods.map(m=>` ${m.v>=0?'+':'−'} ${m.label} ${Math.abs(m.v)}`).join('');
+  $('#exprPreview').textContent=(e||(state.mods.length?'':'—'))+mods;
+  $('#tokens').innerHTML=state.mods.length?state.mods.map((m,i)=>`<span class="token${m.v<0?' neg':''}">${m.v>=0?'+':'−'} ${esc(m.label)} ${Math.abs(m.v)}<button data-untoken="${i}" aria-label="เอาออก">×</button></span>`).join(''):'<span class="hint">ยังไม่ได้บวกค่าจาก stats · กด + หรือ − ที่ชิปด้านบน</span>';
+}
+function renderRollChar(){
+  const sel=$('#rollChar');const a=activeChar();
+  sel.innerHTML=allChars().map(c=>`<option value="${c.id}"${c.id===a.id?' selected':''}>${esc(c.name)}${c.example?' (ตัวอย่าง)':''}</option>`).join('');
+  const chips=AB.map(k=>({k,label:ABN[k],v:cMod(a,k)}));
+  chips.push({k:'prof',label:'PROF',v:cProf(a)});
+  chips.push({k:'init',label:'INIT',v:initB(a)});
+  $('#statChips').innerHTML=chips.map(c=>`<span class="chip"><button class="sub" data-chip="${c.k}" data-sign="-1" aria-label="ลบ ${c.label}">−</button><span class="lbl">${c.label} <em>${fmt(c.v)}</em></span><button class="add" data-chip="${c.k}" data-sign="1" aria-label="บวก ${c.label}">+</button></span>`).join('');
+}
+function showBig(entry){
+  const l=entry.lines[0];const el=$('#bigTotal');
+  $('#bigTitle').innerHTML=esc(entry.title)+(entry.tag?` <span class="tag ${entry.tag}">${entry.tag==='crit'?'Natural 20':'Natural 1'}</span>`:'');
+  $('#bigDetail').innerHTML=entry.lines.map(x=>(entry.lines.length>1?`<div><b class="hi">${esc(x.label)}: ${x.total}</b> — ${x.detail}</div>`:x.detail)).join('');
+  el.className='total';
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){el.textContent=l.total;el.classList.toggle('crit',entry.tag==='crit');el.classList.toggle('fumble',entry.tag==='fumble');return}
+  el.classList.add('spin');let n=0;const max=Math.max(6,Math.abs(l.total)+6);
+  const iv=setInterval(()=>{el.textContent=Math.floor(Math.random()*max)+1;if(++n>7){clearInterval(iv);el.textContent=l.total;el.classList.remove('spin');if(entry.tag)el.classList.add(entry.tag)}},45);
+}
+function renderLog(){
+  const L=$('#logList');
+  if(!state.log.length){L.innerHTML='<div class="empty">ผลการทอยจะแสดงที่นี่</div>';return}
+  L.innerHTML=state.log.map(e=>`<div class="entry${e.tag?' '+e.tag:''}">
+    <div class="row"><span class="t">${esc(e.title)} ${e.tag?`<span class="tag ${e.tag}">${e.tag==='crit'?'NAT 20':'NAT 1'}</span>`:''}</span><span class="when">${new Date(e.t).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</span></div>
+    ${e.lines.map(l=>`<div class="row"><span class="detail">${e.lines.length>1?esc(l.label)+' · ':''}${l.detail}</span><span class="v">${l.total}</span></div>`).join('')}
+  </div>`).join('');
+}
+
+/* ---------- calc view ---------- */
+function calcHP(reroll){
+  const hd=int($('#hpHD').value,10),lv=clamp(int($('#hpLevel').value,1),1,20),con=clamp(int($('#hpCon').value,10),1,30),
+    method=$('#hpMethod').value,extra=int($('#hpExtra').value,0),cm=mod(con);
+  if(method==='roll'&&(reroll||!state.hpRolls||state.hpRolls.length<lv||state.hpRolls.hd!==hd)){state.hpRolls=Array.from({length:20},()=>rnd(hd));state.hpRolls.hd=hd}
+  let total=0;const rows=[];
+  for(let i=1;i<=lv;i++){
+    let base=i===1||method==='max'?hd:method==='avg'?hd/2+1:state.hpRolls[i-1];
+    const v=Math.max(1,base+cm+extra);total+=v;
+    rows.push(`<div><span>Lv ${i}: ${i===1?'เต็ม d'+hd:method==='avg'?'เฉลี่ย':method==='max'?'เต็ม':'ทอยได้'} ${base} ${fmt(cm)} CON${extra?' '+fmt(extra):''}</span><span>${v}</span></div>`);
+  }
+  $('#hpTotal').textContent=total;$('#hpConMod').textContent=fmt(cm);$('#hpDice').textContent=lv+'d'+hd;
+  $('#hpSteps').innerHTML=rows.join('');
+  $('#hpReroll').hidden=method!=='roll';
+  return total;
+}
+function calcAtk(){
+  const B=int($('#atAbil').value)+int($('#atProf').value)+int($('#atMagic').value);
+  const AC=int($('#atAC').value,10),cmin=int($('#atCrit').value,20),count=clamp(int($('#atCount').value,1),1,10),r=parseFloat($('#atRes').value);
+  let hits=0;for(let d=1;d<=20;d++){if(d===1)continue;if(d>=cmin||d+B>=AC)hits++}
+  let p=hits/20,c=(21-cmin)/20;const m=state.atMode;
+  if(m==='adv'){p=1-(1-p)**2;c=1-(1-c)**2}else if(m==='dis'){p=p*p;c=c*c}
+  let dice=0,flat=0,err='';
+  try{const a=avgOf(parse($('#atDice').value));dice=a.dice;flat=a.flat}catch(e){err=e.message}
+  const dm=int($('#atDmgMod').value);
+  const hitAvg=Math.max(0,dice+flat+dm),critAvg=Math.max(0,2*dice+flat+dm);
+  const dpr=count*((p-c)*hitAvg+c*critAvg)*r;
+  const pct=x=>(x*100).toFixed(x<0.1&&x>0?1:0)+'%';
+  $('#atBonus').textContent=fmt(B);$('#atHit').textContent=pct(p);$('#atCritP').textContent=pct(c);
+  $('#atHitBar').style.width=(p*100)+'%';$('#atCritBar').style.width=(c*100)+'%';
+  $('#atAvg').textContent=+(hitAvg*r).toFixed(1);$('#atAvgCrit').textContent=+(critAvg*r).toFixed(1);$('#atDPR').textContent=dpr.toFixed(1);
+  const need=AC-B;
+  $('#atNote').textContent=err||(need<=2?'โดนทุกครั้งยกเว้นทอยได้ 1':need>=21?`ต้องได้คริต (${cmin}${cmin<20?'–20':''}) เท่านั้นถึงจะโดน`:`ต้องทอย d20 ได้ ${need} ขึ้นไปจึงโดน · คริตทอยลูกเต๋าดาเมจเป็น 2 เท่า`);
+}
+function calcRef(){
+  const s=clamp(int($('#qScore').value,10),1,30),l=clamp(int($('#qLevel').value,1),1,20),m=mod(s),p=profB(l);
+  $('#qMod').textContent=fmt(m);$('#qProf').textContent=fmt(p);$('#qDC').textContent=8+p+m;$('#qSA').textContent=fmt(p+m);
+}
+function renderRef(){
+  const rows=[];
+  for(let i=0;i<15;i++){const s=i*2+1;const lv=[1,5,9,13,17][Math.floor(i/3)];
+    rows.push(`<tr><td>${s}–${s+1}</td><td>${fmt(mod(s))}</td><td>${i%3===0&&i<15?lv+'–'+(lv+3):''}</td><td>${i%3===0?fmt(profB(lv)):''}</td></tr>`)}
+  $('#refTable').innerHTML=rows.join('');
+}
+
+/* ---------- characters view ---------- */
+function hpParts(c){const cur=Math.max(0,c.hp.cur),tot=Math.max(c.hp.max,cur+c.hp.temp);return{cw:cur/tot*100,tw:c.hp.temp/tot*100,ratio:cur/c.hp.max}}
+function cardHTML(c){
+  const a=activeChar();const hp=hpParts(c);
+  return `<article class="card${c.id===a.id?' active':''}" data-cid="${c.id}">
+    <div class="card-head"><div style="min-width:0"><div class="nm">${esc(c.name)}</div><div class="sub">${esc(c.cls)}${c.race?' · '+esc(c.race):''} · Lv ${c.level}</div></div>
+      <div class="badges">${c.example?'<span class="badge">ตัวอย่าง</span>':''}${c.id===a.id?'<span class="badge on">ใช้ทอยอยู่</span>':''}</div></div>
+    <div class="hp" data-hpbox>
+      <div class="hp-top"><b>${c.hp.cur}<small> / ${c.hp.max} HP</small></b>${c.hp.temp?`<span class="tmp">+${c.hp.temp} temp</span>`:''}</div>
+      <div class="hpbar"><i class="cur${hp.ratio<=.25?' low':hp.ratio<=.5?' mid':''}" style="width:${hp.cw}%"></i><i class="tmp" style="width:${hp.tw}%"></i></div>
+      <div class="hp-ctl"><button class="btn sm danger" data-hp="dmg">− ดาเมจ</button><input type="number" id="hpamt-${c.id}" value="5" min="0" aria-label="จำนวน"><button class="btn sm" data-hp="heal" style="color:var(--good)">+ ฮีล</button><button class="btn sm ghost" data-hp="temp" title="ให้ HP ชั่วคราว">Temp</button></div>
+    </div>
+    <div class="vitals">
+      <div class="vital"><small>AC</small><b>${c.ac}</b></div>
+      <button class="vital" data-roll="init" title="ทอย Initiative"><small>INIT</small><b>${fmt(initB(c))}</b></button>
+      <div class="vital"><small>SPEED</small><b>${c.speed}</b></div>
+      <div class="vital"><small>PROF</small><b>${fmt(cProf(c))}</b></div>
+    </div>
+    <div class="stats">${AB.map(k=>`<button class="stat" data-roll="check" data-ab="${k}" title="ทอย ${ABN[k]} check"><small>${ABN[k]}</small><b>${fmt(cMod(c,k))}</b><span>${c.stats[k]}</span></button>`).join('')}</div>
+    <div class="card-actions">
+      <button class="btn sm" data-act="sheet">เปิดชีต</button>
+      <button class="btn sm" data-act="edit">แก้ไข</button>
+      <button class="btn sm" data-act="copy">คัดลอก ID</button>
+      ${c.id===a.id?'':'<button class="btn sm" data-act="use">ใช้ทอย</button>'}
+      ${c.example?'':'<button class="btn sm ghost danger" data-act="del">ลบ</button>'}
+    </div>
+  </article>`;
+}
+function renderChars(){
+  $('#cards').innerHTML=allChars().map(cardHTML).join('')+(state.chars.length?'':'<div class="empty" style="align-self:stretch;display:grid;place-items:center">ยังไม่มีตัวละครของคุณ · การ์ดซ้ายมือเป็นตัวอย่าง<br>กด “+ สร้างตัวละคร” หรือ “นำเข้าด้วย ID”</div>');
+  setPill();
+  if(openSheetId) renderSheet();
+}
+
+/* ---------- modals ---------- */
+let openSheetId=null;
+function openModal(html,onClose){
+  const root=$('#modalRoot');
+  root.innerHTML=`<div class="overlay" data-overlay><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+  root._onClose=onClose;
+  const f=root.querySelector('input,select,textarea,button');f&&f.focus({preventScroll:true});
+}
+function closeModal(){const r=$('#modalRoot');r.innerHTML='';openSheetId=null;r._onClose&&r._onClose();r._onClose=null}
+
+function sheetHTML(c){
+  const ca=castAb(c);const pp=10+skillBonus(c,'perception');
+  return `<div class="modal-head"><div><h2 style="font-size:26px">${esc(c.name)}</h2><div class="hint">${esc(c.cls)}${c.race?' · '+esc(c.race):''} · Lv ${c.level} · Hit Die d${c.hitDie}</div></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><div class="seg" data-modeseg>${['dis','normal','adv'].map(m=>`<button data-mode="${m}" aria-pressed="${state.mode===m}">${m==='dis'?'เสียเปรียบ':m==='adv'?'ได้เปรียบ':'ปกติ'}</button>`).join('')}</div><button class="btn sm ghost" data-close aria-label="ปิด">ปิด ✕</button></div></div>
+  <div class="vitals">
+    <div class="vital"><small>HP</small><b>${c.hp.cur}/${c.hp.max}</b></div>
+    <div class="vital"><small>AC</small><b>${c.ac}</b></div>
+    <button class="vital" data-roll="init"><small>INIT</small><b>${fmt(initB(c))}</b></button>
+    <div class="vital"><small>PASSIVE PER.</small><b>${pp}</b></div>
+  </div>
+  ${ca?`<div class="vitals" style="grid-template-columns:repeat(3,minmax(0,1fr))"><div class="vital"><small>SPELL ABILITY</small><b>${ABN[ca]}</b></div><div class="vital"><small>SPELL DC</small><b>${8+cProf(c)+cMod(c,ca)}</b></div><button class="vital" data-roll="spell"><small>SPELL ATK</small><b>${fmt(cProf(c)+cMod(c,ca))}</b></button></div>`:''}
+  <div class="sheet-cols">
+    <div style="display:grid;gap:14px;align-content:start">
+      <div style="display:grid;gap:6px"><h3>Ability check · กดเพื่อทอย</h3><div class="stats">${AB.map(k=>`<button class="stat" data-roll="check" data-ab="${k}"><small>${ABN[k]}</small><b>${fmt(cMod(c,k))}</b><span>${c.stats[k]}</span></button>`).join('')}</div></div>
+      <div style="display:grid;gap:6px"><h3>Saving throws</h3><div class="rows">${AB.map(k=>`<button class="rowbtn" data-roll="save" data-ab="${k}"><span class="dot${c.saves.includes(k)?' on':''}"></span><span class="nm">${ABN[k]} <small>${ABTH[k]}</small></span><b>${fmt(saveBonus(c,k))}</b></button>`).join('')}</div></div>
+      <div style="display:grid;gap:6px"><h3>อื่นๆ</h3><div class="rows">
+        <button class="rowbtn" data-roll="hitdie"><span class="dot"></span><span class="nm">Hit Die (พักสั้น) <small>1d${c.hitDie} ${fmt(cMod(c,'con'))}</small></span><b>↻</b></button>
+        <button class="rowbtn" data-roll="death"><span class="dot"></span><span class="nm">Death saving throw <small>d20 ≥ 10</small></span><b>↻</b></button>
+      </div></div>
+    </div>
+    <div style="display:grid;gap:14px;align-content:start">
+      <div style="display:grid;gap:6px"><h3>Skills</h3><div class="rows">${SKILLS.map(s=>`<button class="rowbtn" data-roll="skill" data-sk="${s[0]}"><span class="dot${c.skills.includes(s[0])||c.expert.includes(s[0])?' on':''}"></span><span class="nm">${s[1]} <small>${s[2]} · ${ABN[s[3]]}${c.expert.includes(s[0])?' · Expertise':''}</small></span><b>${fmt(skillBonus(c,s[0]))}</b></button>`).join('')}</div></div>
+    </div>
+  </div>
+  <div style="display:grid;gap:8px"><div class="panel-head"><h3>การโจมตี</h3><label class="f" style="flex-direction:row;display:flex;align-items:center;gap:8px">AC เป้าหมาย <input type="number" id="sheetAC" placeholder="—" style="width:70px"></label></div>
+    ${c.attacks.length?c.attacks.map((a,i)=>`<div class="atk-card"><div class="atk-top"><b>${esc(a.name)}</b><span>${fmt(atkBonus(c,a))} to hit · ${esc(a.dice)}${fmt(cMod(c,a.ability)+a.bonus)} ${esc(a.type)}</span></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm primary" data-roll="attack" data-i="${i}">โจมตี (to-hit + ดาเมจ)</button><button class="btn sm" data-roll="tohit" data-i="${i}">To-hit อย่างเดียว</button><button class="btn sm" data-roll="dmg" data-i="${i}">ดาเมจ</button><button class="btn sm" data-roll="critdmg" data-i="${i}">ดาเมจคริต</button></div></div>`).join(''):'<div class="empty">ยังไม่มีอาวุธ · เพิ่มได้ในหน้าแก้ไข</div>'}
+  </div>
+  ${c.notes?`<div style="display:grid;gap:6px"><h3>โน้ต</h3><div style="white-space:pre-wrap;color:var(--muted)">${esc(c.notes)}</div></div>`:''}
+  <div class="modal-foot"><button class="btn" data-act="copy">คัดลอก ID</button><button class="btn" data-act="edit">แก้ไข</button><button class="btn primary" data-act="use">ใช้ stats ตัวนี้ในโต๊ะทอย</button></div>`;
+}
+function renderSheet(){
+  const c=getChar(openSheetId);if(!c){closeModal();return}
+  const m=$('#modalRoot .modal');if(!m)return;const st=m.scrollTop;const ac=$('#sheetAC')?.value||'';
+  m.innerHTML=sheetHTML(c);m.dataset.cid=c.id;m.scrollTop=st;if($('#sheetAC'))$('#sheetAC').value=ac;
+}
+function openSheet(id){openSheetId=id;openModal('',null);renderSheet()}
+
+function editorHTML(c,isNew){
+  const opts=Object.keys(CLASSES).map(k=>`<option${(CLASSES[c.cls]?c.cls:'อื่นๆ')===k?' selected':''}>${k}</option>`).join('');
+  return `<div class="modal-head"><h2>${isNew?'สร้างตัวละคร':'แก้ไขตัวละคร'}</h2><button class="btn sm ghost" data-close>ยกเลิก ✕</button></div>
+  <form id="charForm" style="display:grid;gap:16px" autocomplete="off">
+    <div class="grid3">
+      <label class="f" style="grid-column:span 2">ชื่อ<input type="text" id="e-name" value="${esc(c.name)}" maxlength="60" required></label>
+      <label class="f">เผ่าพันธุ์<input type="text" id="e-race" value="${esc(c.race)}" maxlength="30"></label>
+      <label class="f">คลาส<select id="e-cls">${opts}</select></label>
+      <label class="f">ชื่อคลาส (ถ้าเลือกอื่นๆ)<input type="text" id="e-clsx" value="${CLASSES[c.cls]?'':esc(c.cls)}" maxlength="30"></label>
+      <label class="f">เลเวล<input type="number" id="e-level" min="1" max="20" value="${c.level}"></label>
+    </div>
+    <div style="display:grid;gap:8px"><h3>Ability scores</h3>
+      <div class="statedit">${AB.map(k=>`<label>${ABN[k]}<input type="number" id="e-${k}" min="1" max="30" value="${c.stats[k]}" data-statin><em id="em-${k}">${fmt(mod(c.stats[k]))}</em></label>`).join('')}</div>
+      <div><button type="button" class="btn sm" id="rollStats">สุ่มด้วย 4d6 ทิ้งต่ำสุด</button> <button type="button" class="btn sm ghost" id="stdArray">Standard array</button></div>
+    </div>
+    <div class="grid3">
+      <label class="f">AC<input type="number" id="e-ac" value="${c.ac}"></label>
+      <label class="f">Speed (ft)<input type="number" id="e-speed" value="${c.speed}"></label>
+      <label class="f">Initiative โบนัสเพิ่ม<input type="number" id="e-init" value="${c.initBonus}"></label>
+      <label class="f">Hit Die<select id="e-hd">${[6,8,10,12].map(h=>`<option value="${h}"${c.hitDie===h?' selected':''}>d${h}</option>`).join('')}</select></label>
+      <label class="f">Max HP<input type="number" id="e-hpmax" value="${c.hp.max}"></label>
+      <label class="f">HP ปัจจุบัน<input type="number" id="e-hpcur" value="${c.hp.cur}"></label>
+    </div>
+    <div><button type="button" class="btn sm" id="autoHP">คำนวณ Max HP อัตโนมัติ (ค่าเฉลี่ย)</button></div>
+    <div style="display:grid;gap:8px"><h3>Saving throw ที่ถนัด</h3>
+      <div class="checks">${AB.map(k=>`<label class="check"><input type="checkbox" data-save="${k}"${c.saves.includes(k)?' checked':''}>${ABN[k]} <small>${ABTH[k]}</small></label>`).join('')}</div></div>
+    <div style="display:grid;gap:8px"><h3>Skills ที่ถนัด <span class="hint" style="text-transform:none;letter-spacing:0">· กดสองครั้งที่ชื่อ = Expertise</span></h3>
+      <div class="checks">${SKILLS.map(s=>`<label class="check"><input type="checkbox" data-skill="${s[0]}"${c.skills.includes(s[0])||c.expert.includes(s[0])?' checked':''}><span data-exp="${s[0]}"${c.expert.includes(s[0])?' style="color:var(--accent)"':''}>${s[1]}</span> <small>${ABN[s[3]]}</small></label>`).join('')}</div></div>
+    <div style="display:grid;gap:8px"><div class="panel-head"><h3>อาวุธ / การโจมตี</h3><button type="button" class="btn sm" id="addAtk">+ เพิ่ม</button></div>
+      <div id="atkRows" style="display:grid;gap:6px"></div></div>
+    <label class="f">โน้ต<textarea id="e-notes" maxlength="2000">${esc(c.notes)}</textarea></label>
+    <div class="modal-foot"><button type="button" class="btn ghost" data-close>ยกเลิก</button><button type="submit" class="btn primary">บันทึก</button></div>
+  </form>`;
+}
+function atkRowHTML(a,i){
+  return `<div class="atk-row" data-atk="${i}">
+    <input type="text" data-f="name" value="${esc(a.name)}" placeholder="ชื่ออาวุธ" aria-label="ชื่ออาวุธ">
+    <select data-f="ability" aria-label="ใช้ค่า">${AB.map(k=>`<option value="${k}"${a.ability===k?' selected':''}>${ABN[k]}</option>`).join('')}</select>
+    <input type="text" data-f="dice" value="${esc(a.dice)}" placeholder="1d8" aria-label="ลูกเต๋าดาเมจ" spellcheck="false">
+    <input type="number" data-f="bonus" value="${a.bonus}" aria-label="โบนัสเวท" title="โบนัส (+1 weapon ฯลฯ)">
+    <label class="check" title="Proficient"><input type="checkbox" data-f="prof"${a.prof?' checked':''}>Prof</label>
+    <button type="button" class="btn sm ghost danger" data-delatk="${i}" aria-label="ลบอาวุธ">✕</button>
+  </div>`;
+}
+let draft=null;
+function openEditor(c,isNew){
+  draft=JSON.parse(JSON.stringify(c));draft._new=isNew;
+  openModal(editorHTML(draft,isNew));renderAtkRows();
+}
+function readAtkRows(){
+  draft.attacks=$$('#atkRows .atk-row').map(r=>({name:$('[data-f=name]',r).value,ability:$('[data-f=ability]',r).value,dice:$('[data-f=dice]',r).value,bonus:int($('[data-f=bonus]',r).value),prof:$('[data-f=prof]',r).checked,type:''}));
+}
+function renderAtkRows(){$('#atkRows').innerHTML=draft.attacks.length?draft.attacks.map(atkRowHTML).join(''):'<div class="hint">ยังไม่มีอาวุธ</div>'}
+function saveEditor(){
+  readAtkRows();
+  const g=id=>$('#'+id);
+  const cls=g('e-cls').value==='อื่นๆ'?(g('e-clsx').value.trim()||'Adventurer'):g('e-cls').value;
+  const stats={};AB.forEach(k=>stats[k]=int(g('e-'+k).value,10));
+  const skills=$$('[data-skill]').filter(x=>x.checked).map(x=>x.dataset.skill);
+  for(const a of draft.attacks){try{parse(a.dice)}catch(e){toast('อาวุธ “'+esc(a.name)+'”: '+esc(e.message),'fumble');return}}
+  const c=normChar({...draft,id:draft.example?newId():draft.id,name:g('e-name').value.trim()||'ไม่มีชื่อ',race:g('e-race').value.trim(),cls,level:g('e-level').value,stats,
+    ac:g('e-ac').value,speed:g('e-speed').value,initBonus:g('e-init').value,hitDie:g('e-hd').value,
+    hp:{max:g('e-hpmax').value,cur:g('e-hpcur').value,temp:draft.hp.temp},
+    saves:$$('[data-save]').filter(x=>x.checked).map(x=>x.dataset.save),skills,expert:draft.expert.filter(k=>skills.includes(k)),
+    attacks:draft.attacks,notes:g('e-notes').value});
+  const wasNew=draft._new||draft.example;
+  Store.save(c);
+  if(wasNew||!getChar(state.activeId)||state.activeId===EXAMPLE.id) setActive(c.id,true);
+  closeModal();renderChars();renderRollChar();
+  toast(wasNew?'สร้าง “'+esc(c.name)+'” แล้ว':'บันทึก “'+esc(c.name)+'” แล้ว');
+}
+
+function copyId(c){
+  const code=encodeChar(c);
+  const fallback=()=>openModal(`<div class="modal-head"><h2>ID ของ ${esc(c.name)}</h2><button class="btn sm ghost" data-close>ปิด ✕</button></div>
+    <p class="hint" style="margin:0">คัดลอกข้อความนี้เก็บไว้ (เลือกแล้วกด Ctrl/⌘+C) · นำกลับมาวางในปุ่ม “นำเข้าด้วย ID” จะได้ตัวละครตัวเดิมพร้อม stats ล่าสุด</p>
+    <textarea class="codebox" id="codeOut" readonly>${esc(code)}</textarea>`);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(code).then(()=>toast('คัดลอก ID ของ “'+esc(c.name)+'” แล้ว')).catch(()=>{fallback();setTimeout(()=>{const t=$('#codeOut');t&&t.select()},30)});
+  }else{fallback();setTimeout(()=>{const t=$('#codeOut');t&&t.select()},30)}
+}
+function openImport(){
+  openModal(`<div class="modal-head"><h2>นำเข้าตัวละครด้วย ID</h2><button class="btn sm ghost" data-close>ปิด ✕</button></div>
+    <p class="hint" style="margin:0">วาง ID ที่คัดลอกไว้ (ขึ้นต้นด้วย TS1.) ถ้าเป็นตัวละครที่มีอยู่แล้ว ระบบจะอัปเดตตัวเดิมให้เป็นค่าใน ID</p>
+    <textarea class="codebox" id="codeIn" placeholder="TS1.eyJpZCI6..."></textarea>
+    <div class="hint" id="importErr" style="color:var(--bad)"></div>
+    <div class="modal-foot"><button class="btn ghost" data-close>ยกเลิก</button><button class="btn primary" id="doImport">นำเข้า</button></div>`);
+}
+function doImport(){
+  try{
+    const c=decodeChar($('#codeIn').value);
+    if(c.id===EXAMPLE.id) c.id=newId();
+    const exists=state.chars.some(x=>x.id===c.id);
+    Store.save(c);setActive(c.id,true);closeModal();renderChars();renderRollChar();
+    toast(exists?'อัปเดต “'+esc(c.name)+'” ตาม ID แล้ว':'นำเข้า “'+esc(c.name)+'” แล้ว');
+  }catch(e){$('#importErr').textContent=e.message}
+}
+function setActive(id,silent){state.activeId=id;ls.set('ts.active',id);state.mods=[];renderRollChar();renderPreview();if(!silent){renderChars();toast('ใช้ stats ของ “'+esc(getChar(id).name)+'” ในโต๊ะทอยแล้ว')}}
+
+/* char roll dispatch */
+function charRoll(c,kind,el){
+  const ab=el.dataset.ab,i=+el.dataset.i;
+  switch(kind){
+    case 'check':return doRoll(`${c.name} · ${ABN[ab]} check`,'1d20',[{label:ABN[ab],v:cMod(c,ab)}]);
+    case 'save':{const m=[{label:ABN[ab],v:cMod(c,ab)}];if(c.saves.includes(ab))m.push({label:'PROF',v:cProf(c)});return doRoll(`${c.name} · ${ABN[ab]} save`,'1d20',m)}
+    case 'skill':{const s=SKILLS.find(x=>x[0]===el.dataset.sk);const m=[{label:ABN[s[3]],v:cMod(c,s[3])}];
+      if(c.expert.includes(s[0]))m.push({label:'EXPERT',v:cProf(c)*2});else if(c.skills.includes(s[0]))m.push({label:'PROF',v:cProf(c)});
+      return doRoll(`${c.name} · ${s[1]}`,'1d20',m)}
+    case 'init':{const m=[{label:'DEX',v:cMod(c,'dex')}];if(c.initBonus)m.push({label:'โบนัส',v:c.initBonus});return doRoll(`${c.name} · Initiative`,'1d20',m)}
+    case 'spell':{const ca=castAb(c);return doRoll(`${c.name} · Spell attack`,'1d20',[{label:ABN[ca],v:cMod(c,ca)},{label:'PROF',v:cProf(c)}])}
+    case 'hitdie':return doRoll(`${c.name} · Hit Die`,'1d'+c.hitDie,[{label:'CON',v:cMod(c,'con')}],{mode:'normal'});
+    case 'death':{const l=doRoll(`${c.name} · Death save`,'1d20',[],{mode:'normal'});if(l)toast(l.nat===20?'ฟื้น 1 HP!':l.nat===1?'ล้มเหลว 2 ครั้ง':l.total>=10?'สำเร็จ':'ล้มเหลว',l.tag);return}
+    case 'attack':{const ac=$('#sheetAC')?.value;return rollAttack(c,c.attacks[i],ac===''||ac==null?null:int(ac))}
+    case 'tohit':{const a=c.attacks[i];const m=[{label:ABN[a.ability],v:cMod(c,a.ability)}];if(a.prof)m.push({label:'PROF',v:cProf(c)});if(a.bonus)m.push({label:'โบนัส',v:a.bonus});return doRoll(`${c.name} · ${a.name} to-hit`,'1d20',m)}
+    case 'dmg':case 'critdmg':{const a=c.attacks[i];const m=[{label:ABN[a.ability],v:cMod(c,a.ability)}];if(a.bonus)m.push({label:'โบนัส',v:a.bonus});return doRoll(`${c.name} · ${a.name} ดาเมจ${kind==='critdmg'?' (คริต)':''}`,a.dice,m,{mode:'normal',crit:kind==='critdmg'})}
+  }
+}
+function changeHP(c,kind,amt,box){
+  const n=Math.max(0,int(amt,0));if(!n&&kind!=='temp')return;
+  const x=JSON.parse(JSON.stringify(c));
+  if(kind==='dmg'){const fromTemp=Math.min(x.hp.temp,n);x.hp.temp-=fromTemp;x.hp.cur=Math.max(0,x.hp.cur-(n-fromTemp))}
+  else if(kind==='heal'){x.hp.cur=Math.min(x.hp.max,Math.max(0,x.hp.cur)+n)}
+  else{x.hp.temp=Math.max(x.hp.temp,n)}
+  const cc=normChar(x);
+  if(c.example){cc.id=newId();Store.save(cc);setActive(cc.id,true);toast('บันทึกตัวอย่างเป็นตัวละครของคุณแล้ว')}
+  else Store.save(cc);
+  renderChars();
+  const nb=$(`.card[data-cid="${cc.id}"] [data-hpbox]`);if(nb){nb.classList.add(kind==='dmg'?'hp-flash':'hp-heal')}
+  if(cc.hp.cur===0&&kind==='dmg') toast(esc(cc.name)+' หมดสติ (0 HP)','fumble');
+}
+
+/* ---------- tabs ---------- */
+function setTab(t,push){
+  if(!['dice','calc','chars'].includes(t))t='dice';state.tab=t;
+  $$('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===t));
+  ['dice','calc','chars'].forEach(v=>$('#view-'+v).hidden=v!==t);
+  if(push&&location.hash!=='#'+t){try{history.replaceState(null,'','#'+t)}catch(e){location.hash=t}}
+  if(t==='calc'){calcHP();calcAtk();calcRef()}
+}
+function setMode(m){state.mode=m;$$('[data-modeseg] button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.mode===m))}
+
+/* ---------- events ---------- */
+document.addEventListener('click',e=>{
+  const t=e.target;
+  const tab=t.closest('.tab');if(tab){setTab(tab.dataset.tab,true);return}
+  const ms=t.closest('[data-modeseg] button');if(ms){setMode(ms.dataset.mode);return}
+  const am=t.closest('[data-amode]');if(am){state.atMode=am.dataset.amode;$$('[data-amode]').forEach(b=>b.setAttribute('aria-pressed',b===am));calcAtk();return}
+  if(t.closest('[data-close]')){closeModal();return}
+  if(t.matches('[data-overlay]')){closeModal();return}
+
+  const minus=t.closest('[data-minus]');if(minus){const s=+minus.dataset.minus;state.tray[s]=Math.max(0,(state.tray[s]||0)-1);renderDice();return}
+  const die=t.closest('[data-die]');if(die){const s=+die.dataset.die;state.tray[s]=Math.min(99,(state.tray[s]||0)+1);renderDice();const nb=$(`[data-die="${s}"]`);nb&&nb.classList.add('pop');return}
+  const step=t.closest('[data-step]');if(step){state.flat+=+step.dataset.step;$('#flatMod').value=state.flat;renderPreview();return}
+  const chip=t.closest('[data-chip]');if(chip){const c=activeChar();const k=chip.dataset.chip;const sg=+chip.dataset.sign;
+    const v=k==='prof'?cProf(c):k==='init'?initB(c):cMod(c,k);const label=k==='prof'?'PROF':k==='init'?'INIT':ABN[k];
+    state.mods.push({label:(sg<0?'':'')+label,v:sg*v});renderPreview();return}
+  const ut=t.closest('[data-untoken]');if(ut){state.mods.splice(+ut.dataset.untoken,1);renderPreview();return}
+  const pr=t.closest('[data-preset]');if(pr){const p=pr.dataset.preset;
+    if(p==='stats'){try{const lines=Array.from({length:6},(_,i)=>rollLine('ชุดที่ '+(i+1),'4d6kh3',[],{}));const sum=lines.reduce((a,l)=>a+l.total,0);
+      pushLog({title:'สุ่ม stats 4d6 ทิ้งต่ำสุด · รวม '+sum,lines,tag:null,t:Date.now()})}catch(x){}return}
+    if(p==='death'){const l=doRoll('Death save','1d20',[],{mode:'normal'});if(l)toast(l.nat===20?'ฟื้น 1 HP!':l.nat===1?'ล้มเหลว 2 ครั้ง':l.total>=10?'สำเร็จ':'ล้มเหลว',l.tag);return}
+    doRoll(p,p,[],p.includes('kh')||p==='1d100'?{mode:'normal'}:{});return}
+
+  const cardEl=t.closest('[data-cid]');const c=cardEl?getChar(cardEl.dataset.cid):null;
+  const rb=t.closest('[data-roll]');if(rb&&c){charRoll(c,rb.dataset.roll,rb);return}
+  const hb=t.closest('[data-hp]');if(hb&&c){changeHP(c,hb.dataset.hp,$('#hpamt-'+c.id).value);return}
+  const act=t.closest('[data-act]');
+  if(act&&c){
+    const a=act.dataset.act;
+    if(a==='sheet')openSheet(c.id);
+    else if(a==='edit')openEditor(c,!!c.example);
+    else if(a==='copy')copyId(c);
+    else if(a==='use'){setActive(c.id);if(openSheetId){closeModal();setTab('dice',true)}}
+    else if(a==='del'){
+      if(act.classList.contains('armed')){Store.remove(c.id);if(state.activeId===c.id)setActive(allChars()[0].id,true);renderChars();renderRollChar();toast('ลบ “'+esc(c.name)+'” แล้ว')}
+      else{act.classList.add('armed');act.textContent='กดอีกครั้งเพื่อลบ';setTimeout(()=>{if(act.isConnected){act.classList.remove('armed');act.textContent='ลบ'}},3000)}
+    }
+    return;
+  }
+  if(t.closest('#rollBtn')){
+    const e2=trayExpr();
+    if(!e2&&!state.mods.length){toast('เลือกลูกเต๋าก่อน แล้วค่อยกดทอย');return}
+    const title=(e2||'')+(state.mods.length?(e2?' + ':'')+state.mods.map(m=>m.label).join(' '):'');
+    doRoll(title||'ทอย',e2,state.mods);return}
+  if(t.closest('#clearTray')){state.tray={};state.flat=0;state.mods=[];$('#flatMod').value=0;$('#exprInput').value='';renderDice();return}
+  if(t.closest('#addCustom')){const s=clamp(int($('#customSides').value,3),2,1000);const cur=$('#exprInput').value.trim();
+    const re=new RegExp('(^|\\+)(\\d*)d'+s+'(?![\\dk])');const m=cur.match(re);
+    $('#exprInput').value=m?cur.replace(re,(_,p,n)=>p+((+n||1)+1)+'d'+s):(cur?cur+'+':'')+'1d'+s;renderPreview();return}
+  if(t.closest('#clearLog')){state.log=[];ls.set('ts.log',[]);renderLog();return}
+  if(t.closest('#newChar')){openEditor(normChar({name:'',cls:'Fighter',level:1,hitDie:10,stats:{str:15,dex:14,con:13,int:12,wis:10,cha:8},ac:12,hp:{max:11,cur:11}}),true);$('#e-name').value='';return}
+  if(t.closest('#importBtn')){openImport();return}
+  if(t.closest('#doImport')){doImport();return}
+  if(t.closest('#hpReroll')){calcHP(true);return}
+  if(t.closest('#hpFromChar')){const c2=activeChar();$('#hpLevel').value=c2.level;$('#hpCon').value=c2.stats.con;$('#hpHD').value=c2.hitDie;$('#hpClass').value=CLASSES[c2.cls]?c2.cls:'อื่นๆ';calcHP();toast('ใช้ค่าจาก “'+esc(c2.name)+'”');return}
+  if(t.closest('#hpApply')){const c2=activeChar();const x=JSON.parse(JSON.stringify(c2));const tot=calcHP();x.hp.max=tot;x.hp.cur=tot;x.level=int($('#hpLevel').value,1);x.stats.con=int($('#hpCon').value,10);x.hitDie=int($('#hpHD').value,8);
+    const cc=normChar(x);if(c2.example)cc.id=newId();Store.save(cc);setActive(cc.id,true);renderChars();toast(`ตั้ง Max HP ของ “${esc(cc.name)}” เป็น ${tot}`);return}
+  if(t.closest('#atFromChar')){const c2=activeChar();const a=c2.attacks[0]||{ability:'str',dice:'1d6',bonus:0,prof:true};
+    $('#atAbil').value=cMod(c2,a.ability);$('#atProf').value=a.prof?cProf(c2):0;$('#atMagic').value=a.bonus;$('#atDice').value=a.dice;$('#atDmgMod').value=cMod(c2,a.ability)+a.bonus;calcAtk();toast('ใช้ “'+esc(a.name||'อาวุธ')+'” ของ '+esc(c2.name));return}
+  if(t.closest('#atRoll')){
+    const mods=[{label:'ATK',v:int($('#atAbil').value)+int($('#atProf').value)+int($('#atMagic').value)}];const AC=int($('#atAC').value,10);const cmin=int($('#atCrit').value,20);
+    const count=clamp(int($('#atCount').value,1),1,10);const r=parseFloat($('#atRes').value);const lines=[];let total=0,anyCrit=false;
+    try{for(let k=0;k<count;k++){
+      const h=rollLine(`ครั้งที่ ${k+1} to-hit`,'1d20',mods,{mode:state.atMode,critMin:cmin});
+      const crit=h.nat>=cmin;const hit=h.nat!==1&&(crit||h.total>=AC);
+      h.label+=hit?(crit?' · คริต!':' · โดน'):' · พลาด';lines.push(h);
+      if(hit){const d=rollLine(`ดาเมจ${crit?' (คริต)':''}${r!==1?' ×'+r:''}`,$('#atDice').value,[{label:'MOD',v:int($('#atDmgMod').value)}],{crit});d.total=Math.floor(Math.max(0,d.total)*r);total+=d.total;lines.push(d);anyCrit=anyCrit||crit}
+    }
+    pushLog({title:`โจมตี ${count} ครั้ง vs AC ${AC} · รวมดาเมจ ${total}`,lines:[{label:'รวมดาเมจ',total,detail:'',tag:null}].concat(lines),tag:anyCrit?'crit':null,t:Date.now()});
+    setTab('dice',true);
+    }catch(x){toast(esc(x.message),'fumble')}
+    return}
+  if(t.closest('#rollStats')){const v=Array.from({length:6},()=>rollLine('','4d6kh3',[],{}).total);AB.forEach((k,i)=>{$('#e-'+k).value=v[i];$('#em-'+k).textContent=fmt(mod(v[i]))});toast('สุ่มได้ '+v.join(', '));return}
+  if(t.closest('#stdArray')){[15,14,13,12,10,8].forEach((v,i)=>{$('#e-'+AB[i]).value=v;$('#em-'+AB[i]).textContent=fmt(mod(v))});return}
+  if(t.closest('#autoHP')){const hd=int($('#e-hd').value,8),lv=clamp(int($('#e-level').value,1),1,20),cm=mod(int($('#e-con').value,10));
+    let tot=Math.max(1,hd+cm);for(let i=2;i<=lv;i++)tot+=Math.max(1,hd/2+1+cm);$('#e-hpmax').value=tot;$('#e-hpcur').value=tot;toast('Max HP = '+tot);return}
+  if(t.closest('#addAtk')){readAtkRows();draft.attacks.push({name:'',ability:'str',dice:'1d8',bonus:0,prof:true,type:''});renderAtkRows();const r=$$('#atkRows .atk-row').pop();r&&$('input',r).focus();return}
+  const da=t.closest('[data-delatk]');if(da){readAtkRows();draft.attacks.splice(+da.dataset.delatk,1);renderAtkRows();return}
+});
+document.addEventListener('dblclick',e=>{const x=e.target.closest('[data-exp]');if(!x||!draft)return;e.preventDefault();const k=x.dataset.exp;
+  const i=draft.expert.indexOf(k);if(i>=0){draft.expert.splice(i,1);x.style.color=''}else{draft.expert.push(k);x.style.color='var(--accent)';const cb=$(`[data-skill="${k}"]`);cb.checked=true;toast(x.textContent+' · Expertise')}});
+document.addEventListener('submit',e=>{if(e.target.id==='charForm'){e.preventDefault();saveEditor()}});
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.id==='flatMod'){state.flat=int(t.value,0);renderPreview()}
+  else if(t.id==='exprInput')renderPreview();
+  else if(t.matches('[data-statin]')){const k=t.id.slice(2);$('#em-'+k).textContent=fmt(mod(int(t.value,10)))}
+  else if(t.closest('#view-calc')){if(t.id.startsWith('hp'))calcHP();else if(t.id.startsWith('at'))calcAtk();else calcRef()}
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='rollChar'){setActive(t.value,true);renderChars()}
+  else if(t.id==='hpClass'){const hd=CLASSES[t.value][0];$('#hpHD').value=hd;calcHP()}
+  else if(t.id==='e-cls'){const hd=CLASSES[t.value][0];$('#e-hd').value=hd}
+  else if(t.closest('#view-calc')){if(t.id.startsWith('hp'))calcHP(t.id==='hpMethod');else if(t.id.startsWith('at'))calcAtk()}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&$('#modalRoot').innerHTML)closeModal();
+  if(e.key==='Enter'&&e.target.id==='exprInput'){e.preventDefault();$('#rollBtn').click()}
+});
+document.addEventListener('animationend',e=>{e.target.classList&&e.target.classList.remove('pop','hp-flash','hp-heal')});
+window.addEventListener('hashchange',()=>setTab(location.hash.slice(1)));
+
+/* ---------- boot ---------- */
+$('#hpClass').innerHTML=Object.keys(CLASSES).map(k=>`<option${k==='Fighter'?' selected':''}>${k}</option>`).join('');
+$('#hpHD').value=10;
+renderRef();
+Store.init();
+renderDice();renderRollChar();renderLog();renderChars();
+if(state.log[0])showBig(state.log[0]);
+setTab(location.hash.slice(1)||'dice');
+})();
+</script>
+</body>
+</html>
